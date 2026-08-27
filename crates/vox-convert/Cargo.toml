@@ -19,3 +19,8 @@ serde.workspace = true
 cpal.workspace = true
 crossbeam-channel.workspace = true
 ringbuf.workspace = true
+
+[features]
+default = []
+# 启用真实 ONNX 模型端到端测试（需先运行 scripts/generate_test_models.py）
+test-real-models = []
