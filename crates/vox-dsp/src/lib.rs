@@ -16,6 +16,8 @@
 //! - M2: 传统 pitch shift（PSOLA / phase vocoder）作为离线 demo
 //! - M3: PYIN 基频提取（供 AI 路线保留原始 F0 曲线）
 
+pub mod resample;
+
 use thiserror::Error;
 use vox_core::VoxError;
 

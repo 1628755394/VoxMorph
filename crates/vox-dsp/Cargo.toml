@@ -10,10 +10,7 @@ description = "VoxMorph DSP：重采样、VAD、AGC、PYIN、窗函数"
 vox-core.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-# 重型依赖待实现时引入：
-# rubato.workspace = true
-# realfft.workspace = true
-# dasp.workspace = true
+rubato.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
