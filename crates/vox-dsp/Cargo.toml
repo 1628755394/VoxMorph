@@ -11,6 +11,7 @@ vox-core.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 rubato.workspace = true
+realfft.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

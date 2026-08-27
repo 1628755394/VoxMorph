@@ -1239,6 +1239,7 @@ name = "vox-dsp"
 version = "0.1.0"
 dependencies = [
  "proptest",
+ "realfft",
  "rubato",
  "thiserror 2.0.20",
  "tracing",
