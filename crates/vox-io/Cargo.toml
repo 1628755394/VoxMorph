@@ -10,7 +10,8 @@ description = "VoxMorph 音频 I/O：cpal 设备与 symphonia/hound 文件编解
 vox-core.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+cpal.workspace = true
+ringbuf.workspace = true
 # 重型依赖待实现时引入（见各模块 todo）：
-# cpal.workspace = true
 # symphonia.workspace = true
 # hound.workspace = true

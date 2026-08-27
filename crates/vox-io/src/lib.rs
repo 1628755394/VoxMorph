@@ -11,6 +11,8 @@
 //! 本 crate 定义 [`AudioError`]，用 `#[from]` 链入 [`vox_core::VoxError`]，
 //! 同时供 `vox-convert` 通过 `#[from]` 进一步传播。
 
+pub mod cpal;
+
 use thiserror::Error;
 use vox_core::VoxError;
 
@@ -38,10 +40,4 @@ pub enum AudioError {
     /// 来自核心层的错误（如无效参数）。
     #[error(transparent)]
     Core(#[from] VoxError),
-}
-
-// 占位：防止 `cargo` 抱怨未使用导入。实现阶段移除。
-#[allow(dead_code)]
-fn _ensure_link() -> VoxError {
-    VoxError::audio("link")
 }
