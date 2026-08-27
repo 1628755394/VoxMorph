@@ -4612,6 +4612,7 @@ dependencies = [
  "thiserror 2.0.20",
  "tracing",
  "vox-core",
+ "vox-dsp",
  "vox-infer",
 ]
 

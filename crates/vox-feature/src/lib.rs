@@ -21,8 +21,18 @@
 //! 调用 ONNX，不直接依赖 `ort`（解耦推理后端）。
 
 pub mod extractor;
+pub mod rvc;
+pub mod sessions;
+pub mod stream;
 
 pub use extractor::FeatureExtractor;
+pub use rvc::{
+    align_up, feature_len_for_samples, keep_tail_in_place, ms_to_samples,
+    onnx_silence_front_feature_frames, rmvpe_model_input_samples_16k, samples_between_rates,
+    FeatureTensor, Rounding, CONTENTVEC_CONTEXT_ALIGN_SAMPLES, EMBEDDER_SAMPLE_RATE,
+    RMVPE_BUCKET_FRAMES, RMVPE_FRAME_SAMPLES_16K, RMVPE_GUARD_FRAMES, RVC_SAMPLE_RATE,
+};
+pub use sessions::{ContentVecSession, RmvpeSession, RvcModelSession};
 
 use thiserror::Error;
 use vox_core::VoxError;

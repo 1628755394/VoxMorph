@@ -18,6 +18,8 @@
 
 pub mod pitch;
 pub mod resample;
+pub mod rvc;
+pub mod sola;
 
 use thiserror::Error;
 use vox_core::VoxError;
