@@ -12,6 +12,7 @@
 //! 同时供 `vox-convert` 通过 `#[from]` 进一步传播。
 
 pub mod cpal;
+pub mod wav;
 
 use thiserror::Error;
 use vox_core::VoxError;

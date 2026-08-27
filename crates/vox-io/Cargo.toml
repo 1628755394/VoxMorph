@@ -12,6 +12,6 @@ thiserror.workspace = true
 tracing.workspace = true
 cpal.workspace = true
 ringbuf.workspace = true
+hound.workspace = true
 # 重型依赖待实现时引入（见各模块 todo）：
 # symphonia.workspace = true
-# hound.workspace = true
