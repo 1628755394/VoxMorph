@@ -10,5 +10,10 @@ description = "VoxMorph ONNX 推理封装：模型加载、EP 选择、session �
 vox-core.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
-# ort 待实现时引入（注意 EP feature 配置）：
-# ort.workspace = true
+ort.workspace = true
+
+[features]
+default = []
+cuda = ["ort/cuda"]
+directml = ["ort/directml"]
+coreml = ["ort/coreml"]

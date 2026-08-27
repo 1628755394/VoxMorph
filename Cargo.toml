@@ -40,7 +40,8 @@ dasp = "0.11"
 rubato = "0.15"
 realfft = "3.4"
 # 推理后端
-ort = "2.0"
+ort = "2.0.0-rc.13"
+ndarray = "0.17"
 # 线程通信（实时管线专用，禁用 tokio mpsc）
 crossbeam-channel = "0.5"
 ringbuf = "0.4"

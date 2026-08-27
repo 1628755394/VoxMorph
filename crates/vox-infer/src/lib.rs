@@ -24,6 +24,10 @@
 //! - M3: EP 自动选择 + `tracing` 上报
 //! - M6: 输入/输出缓冲复用、INT8 模型加载
 
+pub mod session;
+
+pub use session::{EpDescriptor, OrtSession, SharedOrtSession};
+
 use thiserror::Error;
 use vox_core::VoxError;
 
@@ -46,10 +50,4 @@ pub enum InferError {
     /// 来自核心层的错误。
     #[error(transparent)]
     Core(#[from] VoxError),
-}
-
-// 占位：实现阶段移除。
-#[allow(dead_code)]
-fn _ensure_link() -> VoxError {
-    VoxError::infer("link")
 }
