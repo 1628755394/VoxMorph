@@ -32,6 +32,7 @@
 pub mod offline;
 pub mod pipeline;
 pub mod realtime;
+pub mod stages;
 
 pub use offline::{OfflineConvertParams, OfflineConverter};
 pub use pipeline::{
@@ -40,6 +41,9 @@ pub use pipeline::{
 };
 pub use realtime::{
     FrameAdapter, FrameAdapterConfig, RealtimeEngine, RealtimeEngineConfig, RealtimeEngineHandle,
+};
+pub use stages::{
+    ConvertInputLayout, ConvertStage, FeatureStage, VocoderInputLayout, VocoderStage,
 };
 
 use thiserror::Error;
