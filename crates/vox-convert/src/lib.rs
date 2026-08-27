@@ -30,8 +30,13 @@
 //! - M4: 实时管线流水线 + ringbuf + 低延迟输出
 
 pub mod offline;
+pub mod pipeline;
 
 pub use offline::{OfflineConvertParams, OfflineConverter};
+pub use pipeline::{
+    FrameMessage, MetricsSnapshot, PipelineConfig, PipelineMetrics, Stage, StageWorker,
+    WorkerHandle,
+};
 
 use thiserror::Error;
 use vox_core::VoxError;

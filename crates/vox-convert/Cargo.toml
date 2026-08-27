@@ -15,5 +15,6 @@ vox-infer.workspace = true
 vox-models.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+serde.workspace = true
 crossbeam-channel.workspace = true
 ringbuf.workspace = true

@@ -4562,6 +4562,7 @@ version = "0.1.0"
 dependencies = [
  "crossbeam-channel",
  "ringbuf",
+ "serde",
  "thiserror 2.0.20",
  "tracing",
  "vox-core",
