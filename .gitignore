@@ -25,6 +25,8 @@ Cargo.lock.bak
 crates/vox-ui/dist
 crates/vox-ui/src-tauri/target
 crates/vox-ui/gen/
+crates/vox-ui/frontend/node_modules/
+crates/vox-ui/frontend/dist/
 
 # IDE
 .idea/
