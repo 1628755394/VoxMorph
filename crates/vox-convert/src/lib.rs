@@ -43,7 +43,8 @@ pub use realtime::{
     FrameAdapter, FrameAdapterConfig, RealtimeEngine, RealtimeEngineConfig, RealtimeEngineHandle,
 };
 pub use stages::{
-    ConvertInputLayout, ConvertStage, FeatureStage, VocoderInputLayout, VocoderStage,
+    ConvertInputLayout, ConvertStage, FeatureStage, RvcLiveParams, RvcStage, RvcStageConfig,
+    RvcStageError, VocoderInputLayout, VocoderStage,
 };
 
 use thiserror::Error;

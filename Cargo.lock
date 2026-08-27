@@ -4661,6 +4661,7 @@ dependencies = [
  "tracing-subscriber",
  "vox-convert",
  "vox-core",
+ "vox-infer",
  "vox-io",
  "vox-models",
 ]

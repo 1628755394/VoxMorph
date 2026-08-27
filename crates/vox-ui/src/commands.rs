@@ -134,11 +134,94 @@ pub fn list_timbres(state: State<'_, AppState>) -> Result<Vec<TimbreInfo>, Strin
         .collect())
 }
 
+// ── RVC 模型加载 ──────────────────────────────────────────────────────
+
+/// RVC 模型路径配置（前端传入）。
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct RvcModelPaths {
+    /// ContentVec embedder 模型路径（.onnx）。
+    pub embedder: String,
+    /// RMVPE F0 估计模型路径（.onnx）。
+    pub f0_model: String,
+    /// RVC 生成模型路径（.onnx）。
+    pub rvc_model: String,
+    /// RVC 模型输出采样率（通常 48000）。
+    pub rvc_sample_rate: u32,
+    /// ContentVec 输出通道数（通常 256 或 768）。
+    pub embedder_channels: i64,
+}
+
+/// 加载 RVC 模型并启动实时变声引擎。
+///
+/// 在 `spawn_blocking` 中加载三个 ONNX 模型，构建 `RvcStage`，
+/// 插入 `Pipeline`，然后启动 `RealtimeEngine`。
+#[tauri::command]
+pub async fn start_rvc_engine(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    paths: RvcModelPaths,
+) -> Result<(), String> {
+    if state.is_engine_running() {
+        return Err("engine already running".into());
+    }
+
+    state.set(UiState::LoadingModel);
+    let _ = app.emit("state-changed", state.get());
+
+    // 在 spawn_blocking 中加载模型（IO 密集）。
+    let result = tauri::async_runtime::spawn_blocking(move || load_and_build_rvc_pipeline(&paths))
+        .await
+        .map_err(|e| format!("model loading task failed: {e}"))?;
+
+    let pipeline = result.map_err(|e| {
+        state.set(UiState::Error);
+        let _ = app.emit("state-changed", state.get());
+        e
+    })?;
+
+    state.set(UiState::Running);
+    let _ = app.emit("state-changed", state.get());
+
+    let config = vox_convert::RealtimeEngineConfig::default();
+    state.start_engine(pipeline, config);
+
+    if !state.is_engine_running() {
+        state.set(UiState::Error);
+        let _ = app.emit("state-changed", state.get());
+        return Err("engine failed to start".into());
+    }
+
+    let _ = app.emit("state-changed", state.get());
+    Ok(())
+}
+
+/// 加载 RVC 模型并构建 Pipeline（在 spawn_blocking 中调用）。
+fn load_and_build_rvc_pipeline(paths: &RvcModelPaths) -> Result<vox_convert::Pipeline, String> {
+    let embedder = vox_infer::OrtSession::load(&paths.embedder)
+        .map_err(|e| format!("failed to load embedder: {e}"))?;
+    let f0 = vox_infer::OrtSession::load(&paths.f0_model)
+        .map_err(|e| format!("failed to load f0 model: {e}"))?;
+    let rvc = vox_infer::OrtSession::load(&paths.rvc_model)
+        .map_err(|e| format!("failed to load rvc model: {e}"))?;
+
+    let stage = vox_convert::RvcStage::new(
+        embedder,
+        paths.embedder_channels,
+        f0,
+        rvc,
+        paths.rvc_sample_rate,
+        vox_convert::RvcStageConfig::default(),
+    );
+
+    let mut pipeline = vox_convert::Pipeline::new(vox_convert::PipelineConfig::default_16k_mono());
+    pipeline.add_stage("rvc", Box::new(stage));
+
+    Ok(pipeline)
+}
+
 // ── 实时引擎控制 ──────────────────────────────────────────────────────
 
-/// 启动实时变声引擎。
-///
-/// 使用默认 cpal 设备 + 空管线（M7 框架，后续接入完整 Stage 链）。
+/// 启动实时变声引擎（passthrough 模式，无模型）。
 #[tauri::command]
 pub async fn start_engine(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     if state.is_engine_running() {
@@ -148,8 +231,7 @@ pub async fn start_engine(app: AppHandle, state: State<'_, AppState>) -> Result<
     state.set(UiState::Running);
     let _ = app.emit("state-changed", state.get());
 
-    // M7 框架：用空管线启动（无 Stage，passthrough 效果）。
-    // 完整实现需加载 HuBERT/Converter/Vocoder ONNX 模型并构建 Stage 链。
+    // Passthrough 模式：空管线（无 Stage）。
     let pipeline = vox_convert::Pipeline::new(vox_convert::PipelineConfig::default_16k_mono());
     let config = vox_convert::RealtimeEngineConfig::default();
 

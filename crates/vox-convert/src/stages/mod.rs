@@ -10,8 +10,10 @@
 
 pub mod convert;
 pub mod feature;
+pub mod rvc;
 pub mod vocoder;
 
 pub use convert::{ConvertInputLayout, ConvertStage};
 pub use feature::FeatureStage;
+pub use rvc::{RvcLiveParams, RvcStage, RvcStageConfig, RvcStageError};
 pub use vocoder::{VocoderInputLayout, VocoderStage};

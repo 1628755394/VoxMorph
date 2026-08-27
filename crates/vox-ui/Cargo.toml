@@ -18,6 +18,7 @@ path = "src/main.rs"
 vox-core.workspace = true
 vox-io.workspace = true
 vox-convert.workspace = true
+vox-infer.workspace = true
 vox-models.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
