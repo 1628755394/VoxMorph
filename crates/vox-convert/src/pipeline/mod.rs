@@ -10,8 +10,10 @@
 //! 每阶段一个专用 OS 线程（`std::thread`），阶段间用 `crossbeam-channel::bounded`。
 //! 背压触发丢帧，错误降级为静音 + `tracing::error!`。
 
+pub mod orchestrator;
 pub mod types;
 pub mod worker;
 
+pub use orchestrator::{Pipeline, PipelineHandle};
 pub use types::{FrameMessage, MetricsSnapshot, PipelineConfig, PipelineMetrics, Stage};
 pub use worker::{StageWorker, WorkerHandle};

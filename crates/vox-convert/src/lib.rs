@@ -34,8 +34,8 @@ pub mod pipeline;
 
 pub use offline::{OfflineConvertParams, OfflineConverter};
 pub use pipeline::{
-    FrameMessage, MetricsSnapshot, PipelineConfig, PipelineMetrics, Stage, StageWorker,
-    WorkerHandle,
+    FrameMessage, MetricsSnapshot, Pipeline, PipelineConfig, PipelineHandle, PipelineMetrics,
+    Stage, StageWorker, WorkerHandle,
 };
 
 use thiserror::Error;
