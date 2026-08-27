@@ -62,10 +62,7 @@ impl<S: InferenceSession> FeatureExtractor<S> {
         let t_len = mono.len();
 
         // 构造输入张量 [1, T]。
-        let input = Tensor {
-            data: mono,
-            shape: vec![1, t_len],
-        };
+        let input = Tensor::f32(mono, vec![1, t_len]);
 
         // 推理。
         let outputs = self
@@ -117,7 +114,7 @@ mod tests {
         };
         let output = extractor.extract(&frame).unwrap();
         assert_eq!(output.shape, vec![1, 4]);
-        assert_eq!(output.data, vec![0.1, 0.2, 0.3, 0.4]);
+        assert_eq!(output.as_f32().unwrap(), vec![0.1, 0.2, 0.3, 0.4]);
     }
 
     #[test]
@@ -148,8 +145,9 @@ mod tests {
         };
         let output = extractor.extract(&frame).unwrap();
         assert_eq!(output.shape, vec![1, 2]);
-        assert!((output.data[0] - 0.3).abs() < 1e-6);
-        assert!((output.data[1] - 0.3).abs() < 1e-6);
+        let data = output.as_f32().unwrap();
+        assert!((data[0] - 0.3).abs() < 1e-6);
+        assert!((data[1] - 0.3).abs() < 1e-6);
     }
 
     #[test]
@@ -163,7 +161,7 @@ mod tests {
         };
         let output = extractor.extract(&frame).unwrap();
         assert_eq!(output.shape, vec![1, 2, 768]);
-        assert!(output.data.iter().all(|&v| v == 0.0));
+        assert!(output.as_f32().unwrap().iter().all(|&v| v == 0.0));
     }
 
     #[test]
@@ -177,7 +175,11 @@ mod tests {
         };
         let output = extractor.extract(&frame).unwrap();
         assert_eq!(output.shape, vec![1, 3, 4]);
-        assert!(output.data.iter().all(|&v| (v - 0.7).abs() < 1e-6));
+        assert!(output
+            .as_f32()
+            .unwrap()
+            .iter()
+            .all(|&v| (v - 0.7).abs() < 1e-6));
     }
 
     #[test]

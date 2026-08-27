@@ -21,5 +21,5 @@ pub use audio::{AudioSink, AudioSource};
 pub use device::{AudioDevice, DeviceEnumerator};
 pub use error::VoxError;
 pub use frame::{Frame, VoiceProcessor};
-pub use infer::{InferenceSession, Tensor};
+pub use infer::{InferenceSession, Tensor, TensorData};
 pub use timbre::{Timbre, TimbreId};

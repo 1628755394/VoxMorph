@@ -99,19 +99,13 @@ impl<S: InferenceSession> ConvertStage<S> {
             audio.len()
         };
 
-        let content_tensor = Tensor {
-            data: audio.to_vec(),
-            shape: vec![1, t_len, feat_dim],
-        };
+        let content_tensor = Tensor::f32(audio.to_vec(), vec![1, t_len, feat_dim]);
 
-        let embedding_tensor = Tensor {
-            data: timbre.embedding.to_vec(),
-            shape: {
-                let mut shape = vec![1];
-                shape.extend_from_slice(&self.layout.embedding_shape);
-                shape
-            },
-        };
+        let embedding_tensor = Tensor::f32(timbre.embedding.to_vec(), {
+            let mut shape = vec![1];
+            shape.extend_from_slice(&self.layout.embedding_shape);
+            shape
+        });
 
         vec![content_tensor, embedding_tensor]
     }
@@ -171,7 +165,10 @@ impl<S: InferenceSession> Stage for ConvertStage<S> {
             .lock()
             .expect("output buffer mutex poisoned");
         buf.clear();
-        buf.extend_from_slice(&converted.data);
+        let converted_data = converted
+            .as_f32()
+            .ok_or_else(|| vox_core::VoxError::infer("convert output is not f32".to_string()))?;
+        buf.extend_from_slice(converted_data);
 
         // 输出 Frame：samples = 展平的 converted features。
         output.samples = buf.clone();

@@ -42,10 +42,7 @@ impl<S: InferenceSession> ContentVecSession<S> {
         audio_16k: &[f32],
         out: &mut FeatureTensor,
     ) -> Result<(), FeatureError> {
-        let input = Tensor {
-            data: audio_16k.to_vec(),
-            shape: vec![1, audio_16k.len()],
-        };
+        let input = Tensor::f32(audio_16k.to_vec(), vec![1, audio_16k.len()]);
 
         let outputs = self
             .session
@@ -58,9 +55,12 @@ impl<S: InferenceSession> ContentVecSession<S> {
             ))
         })?;
 
-        // 转换 shape 为 i64。
+        // 提取 f32 数据到 FeatureTensor。
+        let data = result.as_f32().ok_or_else(|| {
+            FeatureError::Infer(InferError::Runtime("contentvec output is not f32".into()))
+        })?;
         out.data.clear();
-        out.data.extend_from_slice(&result.data);
+        out.data.extend_from_slice(data);
         out.shape = result.shape.into_iter().map(|d| d as i64).collect();
 
         // 验证 shape。
@@ -101,10 +101,7 @@ impl<S: InferenceSession> RmvpeSession<S> {
     /// `audio_16k` 为 16kHz 单声道样本。返回 F0（Hz）列表，
     /// 长度由模型决定（通常 = feature_len_for_samples(T, 16000)）。
     pub fn estimate_f0(&mut self, audio_16k: &[f32]) -> Result<Vec<f32>, FeatureError> {
-        let input = Tensor {
-            data: audio_16k.to_vec(),
-            shape: vec![1, audio_16k.len()],
-        };
+        let input = Tensor::f32(audio_16k.to_vec(), vec![1, audio_16k.len()]);
 
         let outputs = self
             .session
@@ -116,7 +113,9 @@ impl<S: InferenceSession> RmvpeSession<S> {
             FeatureError::Infer(InferError::Runtime("rmvpe: no output from session".into()))
         })?;
 
-        Ok(result.data)
+        result.as_f32().map(|d| d.to_vec()).ok_or_else(|| {
+            FeatureError::Infer(InferError::Runtime("rmvpe output is not f32".into()))
+        })
     }
 }
 
@@ -153,12 +152,9 @@ impl<S: InferenceSession> RvcModelSession<S> {
     ///
     /// # 输入张量顺序
     /// 1. content features `[1, frames, 256]`（f32）
-    /// 2. coarse pitch `[1, frames]`（i64 → 转 f32 传入，模型内部 cast）
+    /// 2. coarse pitch `[1, frames]`（i64）
     /// 3. continuous F0 `[1, frames]`（f32）
-    /// 4. speaker ID `[1]`（i64 → 转 f32 传入）
-    ///
-    /// 注意：`InferenceSession::run` 只支持 f32，i64 输入需模型支持 cast
-    /// 或在 `OrtSession` 层扩展。M8 框架先用 f32 传递，后续按需扩展。
+    /// 4. speaker ID `[1]`（i64）
     pub fn convert(
         &mut self,
         features: &FeatureTensor,
@@ -171,24 +167,10 @@ impl<S: InferenceSession> RvcModelSession<S> {
 
         // 构造输入张量。
         // RVC 模型输入顺序：features, pitch, pitchf, sid
-        let feat_tensor = Tensor {
-            data: features.data.clone(),
-            shape: vec![1, frames, channels],
-        };
-        // pitch i64 → f32（InferenceSession 当前只支持 f32）。
-        let pitch_f32: Vec<f32> = pitch.iter().map(|&p| p as f32).collect();
-        let pitch_tensor = Tensor {
-            data: pitch_f32,
-            shape: vec![1, frames],
-        };
-        let pitchf_tensor = Tensor {
-            data: pitchf.to_vec(),
-            shape: vec![1, frames],
-        };
-        let sid_tensor = Tensor {
-            data: vec![speaker_id as f32],
-            shape: vec![1],
-        };
+        let feat_tensor = Tensor::f32(features.data.clone(), vec![1, frames, channels]);
+        let pitch_tensor = Tensor::i64(pitch.to_vec(), vec![1, frames]);
+        let pitchf_tensor = Tensor::f32(pitchf.to_vec(), vec![1, frames]);
+        let sid_tensor = Tensor::i64(vec![speaker_id], vec![1]);
 
         let inputs = [feat_tensor, pitch_tensor, pitchf_tensor, sid_tensor];
         let outputs = self
@@ -202,7 +184,10 @@ impl<S: InferenceSession> RvcModelSession<S> {
             ))
         })?;
 
-        Ok(result.data)
+        result
+            .as_f32()
+            .map(|d| d.to_vec())
+            .ok_or_else(|| FeatureError::Infer(InferError::Runtime("rvc output is not f32".into())))
     }
 }
 

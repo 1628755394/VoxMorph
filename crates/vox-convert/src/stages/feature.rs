@@ -60,7 +60,10 @@ impl<S: vox_core::InferenceSession> Stage for FeatureStage<S> {
 
         // 复用 output buffer。
         self.output_buffer.clear();
-        self.output_buffer.extend_from_slice(&features.data);
+        let features_data = features
+            .as_f32()
+            .ok_or_else(|| vox_core::VoxError::infer("feature output is not f32".to_string()))?;
+        self.output_buffer.extend_from_slice(features_data);
 
         // 输出 Frame：samples = 展平的 content features。
         output.samples = std::mem::take(&mut self.output_buffer);

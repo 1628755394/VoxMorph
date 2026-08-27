@@ -52,6 +52,8 @@ pub struct SolaConfig {
     pub kind: SmoothingKind,
     /// 输出 chunk 样本数。
     pub chunk_samples: usize,
+    /// 采样率（Hz），用于 PSOLA pitch 周期转换。
+    pub sample_rate: u32,
     /// 交叉淡化样本数。
     pub crossfade_samples: usize,
     /// SOLA 搜索范围样本数。
@@ -74,6 +76,7 @@ impl SolaConfig {
         Self {
             kind,
             chunk_samples,
+            sample_rate,
             crossfade_samples: to_samples(crossfade_ms),
             sola_search_samples: to_samples(sola_search_ms),
             tail_discard_samples: to_samples(tail_discard_ms),
@@ -84,6 +87,8 @@ impl SolaConfig {
 /// SOLA chunk joiner：在 chunk 间做相似度搜索 + 交叉淡化。
 pub struct SolaChunkJoiner {
     chunk_samples: usize,
+    sample_rate: u32,
+    kind: SmoothingKind,
     crossfade_samples: usize,
     sola_search_samples: usize,
     tail_discard_samples: usize,
@@ -102,6 +107,8 @@ impl SolaChunkJoiner {
     pub fn new(config: &SolaConfig) -> Self {
         Self {
             chunk_samples: config.chunk_samples,
+            sample_rate: config.sample_rate,
+            kind: config.kind,
             crossfade_samples: config.crossfade_samples,
             sola_search_samples: config.sola_search_samples,
             tail_discard_samples: config.tail_discard_samples,
@@ -138,8 +145,7 @@ impl SolaChunkJoiner {
     }
 
     fn kind(&self) -> SmoothingKind {
-        // M8 框架：默认 SOLA，PSOLA 后续启用。
-        SmoothingKind::Sola
+        self.kind
     }
 
     fn process_with_kind(
@@ -190,7 +196,7 @@ impl SolaChunkJoiner {
         // PSOLA：如果有稳定 F0，优先 pitch 周期边界。
         let (sola_offset, psola_fallback, pitch_period) = if kind == SmoothingKind::Psola {
             if let Some(pitchf) = pitchf {
-                if let Some(period) = stable_pitch_period_samples(pitchf) {
+                if let Some(period) = stable_pitch_period_samples(pitchf, self.sample_rate) {
                     let psola_offset = psola_offset_select(
                         &audio[..candidate_len],
                         weighted_reference,
@@ -334,9 +340,9 @@ const PSOLA_MIN_RMS: f32 = 1e-4;
 
 /// 估计稳定 pitch 周期（样本数）。
 ///
-/// 当 F0 稳定（标准差 < 20% 均值）且有声时返回周期。
-fn stable_pitch_period_samples(pitchf: &[f32]) -> Option<usize> {
-    if pitchf.is_empty() {
+/// 当 F0 稳定（标准差 < 20% 均值）且有声时返回周期 = `sample_rate / mean_f0`。
+fn stable_pitch_period_samples(pitchf: &[f32], sample_rate: u32) -> Option<usize> {
+    if pitchf.is_empty() || sample_rate == 0 {
         return None;
     }
     let voiced: Vec<f32> = pitchf.iter().copied().filter(|&f| f > 0.0).collect();
@@ -359,11 +365,12 @@ fn stable_pitch_period_samples(pitchf: &[f32]) -> Option<usize> {
     if stddev / mean > PSOLA_MAX_RELATIVE_F0_STDDEV {
         return None;
     }
-    // 周期 = sample_rate / f0，但这里 pitchf 没有 sample_rate 信息。
-    // 调用方需确保 pitchf 对应的采样率。M8 框架返回 None，后续完善。
-    // TODO: 接受 sample_rate 参数。
-    let _ = (mean, stddev);
-    None
+    // 周期 = sample_rate / f0（四舍五入到整数样本）。
+    let period = (sample_rate as f32 / mean).round() as usize;
+    if period == 0 {
+        return None;
+    }
+    Some(period)
 }
 
 /// PSOLA 偏移选择：优先 pitch 周期边界。
@@ -410,6 +417,7 @@ mod tests {
         let config = SolaConfig {
             kind: SmoothingKind::Sola,
             chunk_samples: 100,
+            sample_rate: 48000,
             crossfade_samples: 20,
             sola_search_samples: 10,
             tail_discard_samples: 5,
@@ -426,6 +434,7 @@ mod tests {
         let config = SolaConfig {
             kind: SmoothingKind::Sola,
             chunk_samples: 64,
+            sample_rate: 48000,
             crossfade_samples: 32,
             sola_search_samples: 16,
             tail_discard_samples: 0,
@@ -459,6 +468,7 @@ mod tests {
         let config = SolaConfig {
             kind: SmoothingKind::Sola,
             chunk_samples: 100,
+            sample_rate: 48000,
             crossfade_samples: 20,
             sola_search_samples: 10,
             tail_discard_samples: 5,
@@ -474,9 +484,85 @@ mod tests {
     fn sola_config_from_ms() {
         let config = SolaConfig::from_ms(SmoothingKind::Sola, 4800, 48000, 85, 12, 10);
         assert_eq!(config.chunk_samples, 4800);
+        assert_eq!(config.sample_rate, 48000);
         assert_eq!(config.crossfade_samples, 4080); // 85ms * 48 = 4080
         assert_eq!(config.sola_search_samples, 576); // 12ms * 48 = 576
         assert_eq!(config.tail_discard_samples, 480); // 10ms * 48 = 480
+    }
+
+    #[test]
+    fn stable_pitch_period_returns_samples() {
+        // 200Hz @ 48000 → 240 samples
+        let pitchf = vec![200.0; 100];
+        let period = stable_pitch_period_samples(&pitchf, 48000);
+        assert_eq!(period, Some(240));
+    }
+
+    #[test]
+    fn stable_pitch_period_unvoiced_returns_none() {
+        let pitchf = vec![0.0; 100];
+        assert_eq!(stable_pitch_period_samples(&pitchf, 48000), None);
+    }
+
+    #[test]
+    fn stable_pitch_period_unstable_returns_none() {
+        // F0 跳变：100Hz 和 500Hz 交替，标准差大
+        let pitchf: Vec<f32> = (0..100)
+            .map(|i| if i % 2 == 0 { 100.0 } else { 500.0 })
+            .collect();
+        assert_eq!(stable_pitch_period_samples(&pitchf, 48000), None);
+    }
+
+    #[test]
+    fn stable_pitch_period_low_voiced_ratio_returns_none() {
+        // 只有 30% 有声
+        let mut pitchf = vec![0.0; 70];
+        pitchf.extend(vec![200.0; 30]);
+        assert_eq!(stable_pitch_period_samples(&pitchf, 48000), None);
+    }
+
+    #[test]
+    fn stable_pitch_period_empty_returns_none() {
+        assert_eq!(stable_pitch_period_samples(&[], 48000), None);
+    }
+
+    #[test]
+    fn stable_pitch_period_zero_sample_rate_returns_none() {
+        let pitchf = vec![200.0; 100];
+        assert_eq!(stable_pitch_period_samples(&pitchf, 0), None);
+    }
+
+    #[test]
+    fn psola_joiner_uses_pitch_period() {
+        // PSOLA 配置：chunk=64, crossfade=32, search=16
+        let config = SolaConfig {
+            kind: SmoothingKind::Psola,
+            chunk_samples: 64,
+            sample_rate: 48000,
+            crossfade_samples: 32,
+            sola_search_samples: 16,
+            tail_discard_samples: 0,
+        };
+        let mut joiner = SolaChunkJoiner::new(&config);
+
+        // 第一个 chunk：正弦波（200Hz @ 48kHz → 周期 240 样本）
+        let sine: Vec<f32> = (0..128)
+            .map(|i| (i as f32 * 2.0 * std::f32::consts::PI * 200.0 / 48000.0).sin())
+            .collect();
+        let pitchf = [200.0f32; 10];
+        joiner.process_with_pitchf(&sine, &pitchf);
+
+        // 第二个 chunk：同样的正弦波但前面有偏移
+        let mut chunk2 = vec![0.0; 16];
+        chunk2.extend_from_slice(&sine);
+        chunk2.extend_from_slice(&[0.0; 64]);
+
+        let offset = joiner.process_with_pitchf(&chunk2, &pitchf);
+        // PSOLA 应该不 panic 并返回有效偏移
+        let _ = offset;
+        assert_eq!(joiner.output().len(), 64);
+        let diag = joiner.last_diagnostics();
+        assert_eq!(diag.kind, Some(SmoothingKind::Psola));
     }
 
     #[test]

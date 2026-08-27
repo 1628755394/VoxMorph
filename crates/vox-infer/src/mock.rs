@@ -5,7 +5,7 @@
 
 use std::sync::Mutex;
 
-use vox_core::{InferenceSession, Tensor, VoxError};
+use vox_core::{InferenceSession, Tensor, TensorData, VoxError};
 
 use crate::InferError;
 
@@ -72,14 +72,14 @@ impl InferenceSession for MockSession {
             MockStrategy::Zeros { shape } => {
                 let len = shape.iter().product();
                 vec![Tensor {
-                    data: vec![0.0; len],
+                    data: TensorData::F32(vec![0.0; len]),
                     shape,
                 }]
             }
             MockStrategy::Constant { shape, value } => {
                 let len = shape.iter().product();
                 vec![Tensor {
-                    data: vec![value; len],
+                    data: TensorData::F32(vec![value; len]),
                     shape,
                 }]
             }
@@ -104,40 +104,35 @@ mod tests {
     #[test]
     fn identity_returns_inputs() {
         let mut session = MockSession::identity();
-        let input = Tensor {
-            data: vec![1.0, 2.0, 3.0],
-            shape: vec![3],
-        };
+        let input = Tensor::f32(vec![1.0, 2.0, 3.0], vec![3]);
         let outputs = session.run(std::slice::from_ref(&input)).unwrap();
         assert_eq!(outputs.len(), 1);
-        assert_eq!(outputs[0].data, input.data);
+        assert_eq!(outputs[0].as_f32().unwrap(), input.as_f32().unwrap());
         assert_eq!(outputs[0].shape, input.shape);
     }
 
     #[test]
     fn zeros_returns_zero_tensor() {
         let mut session = MockSession::zeros(vec![2, 3]);
-        let input = Tensor {
-            data: vec![1.0; 6],
-            shape: vec![2, 3],
-        };
+        let input = Tensor::f32(vec![1.0; 6], vec![2, 3]);
         let outputs = session.run(&[input]).unwrap();
         assert_eq!(outputs.len(), 1);
         assert_eq!(outputs[0].shape, vec![2, 3]);
-        assert!(outputs[0].data.iter().all(|&v| v == 0.0));
+        assert!(outputs[0].as_f32().unwrap().iter().all(|&v| v == 0.0));
     }
 
     #[test]
     fn constant_returns_constant_tensor() {
         let mut session = MockSession::constant(vec![4], 0.5);
-        let input = Tensor {
-            data: vec![1.0; 4],
-            shape: vec![4],
-        };
+        let input = Tensor::f32(vec![1.0; 4], vec![4]);
         let outputs = session.run(&[input]).unwrap();
         assert_eq!(outputs.len(), 1);
         assert_eq!(outputs[0].shape, vec![4]);
-        assert!(outputs[0].data.iter().all(|&v| (v - 0.5).abs() < 1e-6));
+        assert!(outputs[0]
+            .as_f32()
+            .unwrap()
+            .iter()
+            .all(|&v| (v - 0.5).abs() < 1e-6));
     }
 
     #[test]
@@ -146,29 +141,23 @@ mod tests {
             inputs
                 .iter()
                 .map(|t| Tensor {
-                    data: t.data.iter().map(|&v| v * 2.0).collect(),
+                    data: TensorData::F32(t.as_f32().unwrap().iter().map(|&v| v * 2.0).collect()),
                     shape: t.shape.clone(),
                 })
                 .collect()
         };
         let mut session = MockSession::new(MockStrategy::Custom(double));
-        let input = Tensor {
-            data: vec![1.0, 2.0, 3.0],
-            shape: vec![3],
-        };
+        let input = Tensor::f32(vec![1.0, 2.0, 3.0], vec![3]);
         let outputs = session.run(&[input]).unwrap();
-        assert_eq!(outputs[0].data, vec![2.0, 4.0, 6.0]);
+        assert_eq!(outputs[0].as_f32().unwrap(), vec![2.0, 4.0, 6.0]);
     }
 
     #[test]
     fn default_is_identity() {
         let mut session = MockSession::default();
-        let input = Tensor {
-            data: vec![42.0],
-            shape: vec![1],
-        };
+        let input = Tensor::f32(vec![42.0], vec![1]);
         let outputs = session.run(std::slice::from_ref(&input)).unwrap();
-        assert_eq!(outputs[0].data, vec![42.0]);
+        assert_eq!(outputs[0].as_f32().unwrap(), vec![42.0]);
     }
 
     #[test]

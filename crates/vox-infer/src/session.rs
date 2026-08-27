@@ -25,7 +25,7 @@ use std::sync::Arc;
 use ort::session::Session;
 use ort::value::Tensor as OrtTensor;
 use tracing::{info, span, warn, Level};
-use vox_core::{InferenceSession, Tensor, VoxError};
+use vox_core::{InferenceSession, Tensor, TensorData, VoxError};
 
 use crate::InferError;
 
@@ -139,24 +139,46 @@ impl OrtSession {
         &self.session
     }
 
-    /// 将 [`vox_core::Tensor`] 转换为 `ort::value::Tensor`。
-    fn to_ort_value(tensor: &Tensor) -> Result<OrtTensor<f32>, InferError> {
+    /// 将 [`vox_core::Tensor`] 转换为 `ort::value::DynTensor`。
+    ///
+    /// 根据 `TensorData` 的 dtype 选择对应的 ort 张量类型。
+    fn to_ort_value(tensor: &Tensor) -> Result<ort::value::DynTensor, InferError> {
         let shape: Vec<usize> = tensor.shape.clone();
-        let data = tensor.data.clone().into_boxed_slice();
-        OrtTensor::from_array((shape, data))
-            .map_err(|e| InferError::Runtime(format!("tensor creation failed: {e}")))
+        match &tensor.data {
+            TensorData::F32(data) => {
+                let data = data.clone().into_boxed_slice();
+                let ort_tensor = OrtTensor::<f32>::from_array((shape, data))
+                    .map_err(|e| InferError::Runtime(format!("tensor creation failed: {e}")))?;
+                Ok(ort_tensor.upcast())
+            }
+            TensorData::I64(data) => {
+                let data = data.clone().into_boxed_slice();
+                let ort_tensor = OrtTensor::<i64>::from_array((shape, data))
+                    .map_err(|e| InferError::Runtime(format!("tensor creation failed: {e}")))?;
+                Ok(ort_tensor.upcast())
+            }
+        }
     }
 
     /// 将 `ort::value::DynValue` 输出转换为 [`vox_core::Tensor`]。
+    ///
+    /// 优先尝试 f32 提取，失败后尝试 i64。
     fn from_ort_value(value: &ort::value::DynValue) -> Result<Tensor, InferError> {
+        // 先尝试 f32（最常见）。
+        if let Ok((shape, data)) = value.try_extract_tensor::<f32>() {
+            let shape_vec: Vec<usize> = shape.iter().map(|&d| d as usize).collect();
+            return Ok(Tensor {
+                data: TensorData::F32(data.to_vec()),
+                shape: shape_vec,
+            });
+        }
+        // 回退到 i64。
         let (shape, data) = value
-            .try_extract_tensor::<f32>()
+            .try_extract_tensor::<i64>()
             .map_err(|e| InferError::Runtime(format!("tensor extraction failed: {e}")))?;
-
         let shape_vec: Vec<usize> = shape.iter().map(|&d| d as usize).collect();
-        let data_vec = data.to_vec();
         Ok(Tensor {
-            data: data_vec,
+            data: TensorData::I64(data.to_vec()),
             shape: shape_vec,
         })
     }
@@ -177,7 +199,7 @@ impl InferenceSession for OrtSession {
         let mut inputs_map: HashMap<String, ort::value::DynTensor> = HashMap::new();
         for (name, tensor) in input_names.iter().zip(inputs.iter()) {
             let ort_val = Self::to_ort_value(tensor).map_err(|e| VoxError::infer(e.to_string()))?;
-            inputs_map.insert(name.clone(), ort_val.upcast());
+            inputs_map.insert(name.clone(), ort_val);
         }
 
         // 执行推理。

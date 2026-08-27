@@ -72,10 +72,7 @@ impl<S: InferenceSession> VocoderStage<S> {
             features.len()
         };
 
-        Tensor {
-            data: features.to_vec(),
-            shape: vec![1, t_len, feat_dim],
-        }
+        Tensor::f32(features.to_vec(), vec![1, t_len, feat_dim])
     }
 
     /// 静音输出（错误降级）。
@@ -116,7 +113,10 @@ impl<S: InferenceSession> Stage for VocoderStage<S> {
 
         // 复用 output buffer。
         self.output_buffer.clear();
-        self.output_buffer.extend_from_slice(&waveform.data);
+        let waveform_data = waveform
+            .as_f32()
+            .ok_or_else(|| vox_core::VoxError::infer("vocoder output is not f32".to_string()))?;
+        self.output_buffer.extend_from_slice(waveform_data);
 
         // 输出 Frame：samples = 音频波形。
         output.samples = std::mem::take(&mut self.output_buffer);

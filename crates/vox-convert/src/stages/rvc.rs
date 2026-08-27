@@ -118,7 +118,7 @@ impl<E: InferenceSession, F: InferenceSession, R: InferenceSession> RvcStage<E, 
     ) -> Self {
         let chunk_samples = ms_to_samples(rvc_sample_rate, 500); // 默认 500ms chunk
         let sola_config = SolaConfig::from_ms(
-            SmoothingKind::Sola,
+            SmoothingKind::Psola,
             chunk_samples,
             rvc_sample_rate,
             config.crossfade_ms,
@@ -232,8 +232,9 @@ impl<E: InferenceSession, F: InferenceSession, R: InferenceSession> RvcStage<E, 
             live.speaker_id,
         )?;
 
-        // 7. SOLA 平滑。
-        self.smoother.process(&self.rvc_output);
+        // 7. SOLA/PSOLA 平滑（传入 F0 用于 pitch 周期对齐）。
+        self.smoother
+            .process_with_pitchf(&self.rvc_output, &self.pitchf_buffer);
         let smoothed = self.smoother.output().to_vec();
 
         // 8. 输出增益。
