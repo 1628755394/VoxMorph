@@ -1,0 +1,26 @@
+/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# 模型与音色产物（体积大，不入库）
+/models/*.onnx
+/models/*.bin
+/models/*.ckpt
+!/models/.gitkeep
+
+# Tauri 构建产物
+crates/vox-ui/dist
+crates/vox-ui/src-tauri/target
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+Thumbs.db
+.DS_Store
+
+# 日志
+*.log
+logs/

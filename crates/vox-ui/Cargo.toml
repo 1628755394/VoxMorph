@@ -1,0 +1,18 @@
+[package]
+name = "vox-ui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "VoxMorph Tauri GUI 后端：命令、事件、状态机"
+
+[dependencies]
+vox-core.workspace = true
+vox-io.workspace = true
+vox-convert.workspace = true
+vox-models.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+serde.workspace = true
+# tauri 待 GUI 阶段引入（M1 后期）：
+# tauri.workspace = true

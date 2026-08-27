@@ -1,0 +1,81 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/vox-core",
+    "crates/vox-io",
+    "crates/vox-dsp",
+    "crates/vox-feature",
+    "crates/vox-infer",
+    "crates/vox-convert",
+    "crates/vox-models",
+    "crates/vox-ui",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+repository = "https://github.com/voxmorph/voxmorph"
+
+# 统一版本声明，各 crate 用 `dep.workspace = true` 继承（proj-workspace-deps）。
+# 重型依赖（cpal/ort/symphonia/tauri）在此声明，但仅在对应 crate 实现时才引入，
+# 以保证骨架阶段 `cargo build` 快速通过。
+[workspace.dependencies]
+# 错误与序列化
+thiserror = "2.0"
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+# 日志与可观测性
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# 音频 I/O 与编解码
+cpal = "0.15"
+symphonia = "0.5"
+hound = "3.5"
+# DSP
+dasp = "0.11"
+rubato = "0.15"
+realfft = "3.4"
+# 推理后端
+ort = "2.0"
+# 线程通信（实时管线专用，禁用 tokio mpsc）
+crossbeam-channel = "0.5"
+ringbuf = "0.4"
+# GUI
+tauri = "2.0"
+# 测试
+proptest = "1.5"
+criterion = "0.5"
+insta = "1.40"
+loom = "0.7"
+
+# 内部 crate 互引（path + workspace 版本）
+vox-core = { path = "crates/vox-core", version = "0.1.0" }
+vox-io = { path = "crates/vox-io", version = "0.1.0" }
+vox-dsp = { path = "crates/vox-dsp", version = "0.1.0" }
+vox-feature = { path = "crates/vox-feature", version = "0.1.0" }
+vox-infer = { path = "crates/vox-infer", version = "0.1.0" }
+vox-convert = { path = "crates/vox-convert", version = "0.1.0" }
+vox-models = { path = "crates/vox-models", version = "0.1.0" }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort" # 实时线程 panic 不应 unwind，整体退出比静默错误更易诊断
+strip = true
+
+[profile.bench]
+inherits = "release"
+debug = true
+strip = false
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+# 依赖在 dev 也优化，否则音频/DSP 跑不动
+[profile.dev.package."*"]
+opt-level = 3

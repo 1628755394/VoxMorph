@@ -1,0 +1,14 @@
+[package]
+name = "vox-models"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "VoxMorph 模型与音色库管理：加载、索引、量化元数据"
+
+[dependencies]
+vox-core.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+toml.workspace = true
+tracing.workspace = true

@@ -1,0 +1,19 @@
+[package]
+name = "vox-convert"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "VoxMorph 变声主流程编排：实时管线 + 离线批处理"
+
+[dependencies]
+vox-core.workspace = true
+vox-io.workspace = true
+vox-dsp.workspace = true
+vox-feature.workspace = true
+vox-infer.workspace = true
+vox-models.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+crossbeam-channel.workspace = true
+ringbuf.workspace = true
