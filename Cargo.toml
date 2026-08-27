@@ -9,6 +9,7 @@ members = [
     "crates/vox-convert",
     "crates/vox-models",
     "crates/vox-ui",
+    "crates/vox-demo",
 ]
 
 [workspace.package]

@@ -107,6 +107,33 @@ impl CpalEnumerator {
             host: cpal::default_host(),
         }
     }
+
+    /// 默认输入设备，返回具体类型 [`CpalDevice`] 供 `CpalSource::new` 使用。
+    ///
+    /// 与 [`DeviceEnumerator::default_input`] 的区别：后者返回 `Box<dyn AudioDevice>`
+    /// 无法 downcast 回 `CpalDevice`，故提供此具体方法。
+    pub fn default_input_cpal(&self) -> Option<CpalDevice> {
+        let dev = self.host.default_input_device()?;
+        match CpalDevice::new_input(dev) {
+            Ok(cd) => Some(cd),
+            Err(e) => {
+                tracing::warn!(error = %e, "default input device unavailable");
+                None
+            }
+        }
+    }
+
+    /// 默认输出设备，返回具体类型 [`CpalDevice`] 供 `CpalSink::new` 使用。
+    pub fn default_output_cpal(&self) -> Option<CpalDevice> {
+        let dev = self.host.default_output_device()?;
+        match CpalDevice::new_output(dev) {
+            Ok(cd) => Some(cd),
+            Err(e) => {
+                tracing::warn!(error = %e, "default output device unavailable");
+                None
+            }
+        }
+    }
 }
 
 impl Default for CpalEnumerator {
