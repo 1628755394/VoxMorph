@@ -29,6 +29,8 @@
 //! - M2: 离线 DSP 变声（pitch/formant）跑通文件处理
 //! - M4: 实时管线流水线 + ringbuf + 低延迟输出
 
+pub mod offline;
+
 use thiserror::Error;
 use vox_core::VoxError;
 
