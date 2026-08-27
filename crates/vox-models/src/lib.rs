@@ -21,8 +21,10 @@
 //! - M5: 音色库索引、加载、列表
 //! - M5: 模型注册表（HuBERT / Converter / Vocoder 三件套）
 
+pub mod library;
 pub mod timbre_file;
 
+pub use library::TimbreLibrary;
 pub use timbre_file::{TimbreFile, TimbreMetadata};
 
 use thiserror::Error;
