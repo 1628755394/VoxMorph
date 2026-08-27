@@ -24,8 +24,10 @@
 //! - M3: EP 自动选择 + `tracing` 上报
 //! - M6: 输入/输出缓冲复用、INT8 模型加载
 
+pub mod mock;
 pub mod session;
 
+pub use mock::{MockSession, MockStrategy};
 pub use session::{EpDescriptor, OrtSession, SharedOrtSession};
 
 use thiserror::Error;
