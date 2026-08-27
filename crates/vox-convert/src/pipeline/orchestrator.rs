@@ -123,8 +123,8 @@ impl Pipeline {
 /// 管线运行句柄：喂帧、取输出、停止。
 pub struct PipelineHandle {
     handles: Vec<WorkerHandle>,
-    feed_tx: Sender<FrameMessage>,
-    output_rx: Receiver<FrameMessage>,
+    pub(crate) feed_tx: Sender<FrameMessage>,
+    pub(crate) output_rx: Receiver<FrameMessage>,
     metrics: Arc<PipelineMetrics>,
     #[allow(dead_code)]
     config: PipelineConfig,

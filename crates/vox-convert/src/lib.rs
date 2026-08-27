@@ -31,11 +31,15 @@
 
 pub mod offline;
 pub mod pipeline;
+pub mod realtime;
 
 pub use offline::{OfflineConvertParams, OfflineConverter};
 pub use pipeline::{
     FrameMessage, MetricsSnapshot, Pipeline, PipelineConfig, PipelineHandle, PipelineMetrics,
     Stage, StageWorker, WorkerHandle,
+};
+pub use realtime::{
+    FrameAdapter, FrameAdapterConfig, RealtimeEngine, RealtimeEngineConfig, RealtimeEngineHandle,
 };
 
 use thiserror::Error;
