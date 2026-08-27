@@ -31,6 +31,8 @@
 
 pub mod offline;
 
+pub use offline::{OfflineConvertParams, OfflineConverter};
+
 use thiserror::Error;
 use vox_core::VoxError;
 

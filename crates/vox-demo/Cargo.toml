@@ -10,5 +10,6 @@ publish = false
 [dependencies]
 vox-core.workspace = true
 vox-io.workspace = true
+vox-convert.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
