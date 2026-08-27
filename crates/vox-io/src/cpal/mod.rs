@@ -10,5 +10,7 @@
 //! - [`sink`]：`CpalSink` 实现 `AudioSink`（M1 Slice 3）。
 
 pub mod device;
+pub mod source;
 
 pub use device::{CpalDevice, CpalEnumerator};
+pub use source::CpalSource;

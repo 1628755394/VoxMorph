@@ -19,8 +19,7 @@ use crate::AudioError;
 /// 一个 `CpalDevice` 只代表一个方向（输入或输出），因为 `AudioDevice` trait
 /// 不区分方向，而 cpal 的默认配置查询是按方向进行的。
 pub struct CpalDevice {
-    // Slice 2/3 的 `CpalSource`/`CpalSink` 通过 `into_device` 取走底层设备打开流。
-    #[allow(dead_code)]
+    // `CpalSource`/`CpalSink` 通过 `into_device` 取走底层设备打开流。
     device: Device,
     name: String,
     sample_rate: u32,
@@ -46,7 +45,6 @@ impl CpalDevice {
     }
 
     /// 取底层 cpal 设备，供 `CpalSource` / `CpalSink` 打开流时使用。
-    #[allow(dead_code)]
     pub(crate) fn into_device(self) -> Device {
         self.device
     }
