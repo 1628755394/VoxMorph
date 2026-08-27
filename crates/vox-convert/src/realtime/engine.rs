@@ -51,9 +51,11 @@ impl Default for RealtimeEngineConfig {
     }
 }
 
-/// 实时引擎：编排 cpal 输入 → Pipeline → cpal 输出。
+/// 实时引擎：编排 AudioSource → Pipeline → AudioSink。
 ///
-/// 使用默认 cpal 设备。启动后返回句柄，调用 stop() 停止。
+/// 提供两种启动方式：
+/// - [`RealtimeEngine::start_with_default_devices`]: 使用 cpal 默认设备
+/// - [`RealtimeEngine::start_with_source_sink`]: 使用任意 AudioSource/AudioSink（供测试）
 pub struct RealtimeEngine;
 
 impl RealtimeEngine {
@@ -78,6 +80,24 @@ impl RealtimeEngine {
         let (sink, output_stream) =
             CpalSink::new(output_device).map_err(|e| VoxError::audio(e.to_string()))?;
 
+        let handle = Self::start_with_source_sink(pipeline, config, source, sink)?;
+        Ok(RealtimeEngineHandle {
+            inner: handle,
+            _input_stream: Some(input_stream),
+            _output_stream: Some(output_stream),
+        })
+    }
+
+    /// 使用任意 AudioSource/AudioSink 启动实时变声（供测试）。
+    ///
+    /// # Errors
+    /// Pipeline 启动失败或线程 spawn 失败返回 [`VoxError`]。
+    pub fn start_with_source_sink(
+        pipeline: Pipeline,
+        config: RealtimeEngineConfig,
+        source: impl AudioSource + 'static,
+        sink: impl AudioSink + 'static,
+    ) -> Result<RealtimeEngineHandleInner, VoxError> {
         let metrics = pipeline.metrics();
         let mut pipeline_handle = pipeline
             .start()
@@ -125,20 +145,18 @@ impl RealtimeEngine {
 
         info!("realtime engine started");
 
-        Ok(RealtimeEngineHandle {
+        Ok(RealtimeEngineHandleInner {
             pipeline_handle,
             stop_flag,
             capture_thread: Some(capture_thread),
             output_thread: Some(output_thread),
-            _input_stream: input_stream,
-            _output_stream: output_stream,
         })
     }
 }
 
 /// capture 线程主循环。
 fn run_capture_loop(
-    mut source: CpalSource,
+    mut source: impl AudioSource,
     feed_tx: crossbeam_channel::Sender<crate::pipeline::FrameMessage>,
     config: RealtimeEngineConfig,
     stop_flag: Arc<AtomicBool>,
@@ -178,7 +196,7 @@ fn run_capture_loop(
 
 /// output 线程主循环。
 fn run_output_loop(
-    mut sink: CpalSink,
+    mut sink: impl AudioSink,
     output_rx: crossbeam_channel::Receiver<crate::pipeline::FrameMessage>,
     config: RealtimeEngineConfig,
     stop_flag: Arc<AtomicBool>,
@@ -220,18 +238,15 @@ fn run_output_loop(
     info!("output thread exiting");
 }
 
-/// 实时引擎运行句柄。
-pub struct RealtimeEngineHandle {
+/// 内部引擎句柄（不含 cpal 流句柄）。
+pub struct RealtimeEngineHandleInner {
     pipeline_handle: PipelineHandle,
     stop_flag: Arc<AtomicBool>,
     capture_thread: Option<thread::JoinHandle<()>>,
     output_thread: Option<thread::JoinHandle<()>>,
-    /// 保持 cpal 流句柄存活（drop 即停止采集/播放）。
-    _input_stream: cpal::Stream,
-    _output_stream: cpal::Stream,
 }
 
-impl RealtimeEngineHandle {
+impl RealtimeEngineHandleInner {
     /// 获取共享指标。
     pub fn metrics(&self) -> Arc<PipelineMetrics> {
         self.pipeline_handle.metrics()
@@ -248,5 +263,26 @@ impl RealtimeEngineHandle {
         }
         self.pipeline_handle.stop();
         info!("realtime engine stopped");
+    }
+}
+
+/// 实时引擎运行句柄（含 cpal 流句柄保活）。
+pub struct RealtimeEngineHandle {
+    inner: RealtimeEngineHandleInner,
+    /// 保持 cpal 流句柄存活（drop 即停止采集/播放）。
+    _input_stream: Option<cpal::Stream>,
+    _output_stream: Option<cpal::Stream>,
+}
+
+impl RealtimeEngineHandle {
+    /// 获取共享指标。
+    pub fn metrics(&self) -> Arc<PipelineMetrics> {
+        self.inner.metrics()
+    }
+
+    /// 停止引擎。
+    pub fn stop(self) {
+        self.inner.stop();
+        // cpal streams drop here, stopping capture/playback.
     }
 }
