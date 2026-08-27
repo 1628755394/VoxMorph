@@ -24,6 +24,7 @@ Cargo.lock.bak
 # Tauri 构建产物
 crates/vox-ui/dist
 crates/vox-ui/src-tauri/target
+crates/vox-ui/gen/
 
 # IDE
 .idea/

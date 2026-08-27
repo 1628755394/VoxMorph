@@ -23,7 +23,13 @@
 //! - M5: 音色库管理 UI、参数滑块、波形/频谱可视化
 //! - M7: 打包发布
 
+mod commands;
+mod state;
+
 use serde::{Deserialize, Serialize};
+
+pub use commands::*;
+pub use state::AppState;
 
 /// GUI 状态机。用 enum 而非 string，避免 stringly-typed（`type-enum-states`）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,4 +59,27 @@ pub struct PipelineMetrics {
     pub dropped_frames: u64,
     /// 当前状态。
     pub state: UiState,
+}
+
+/// Tauri 应用入口。由 `main.rs` 调用（`proj-lib-main-split`）。
+///
+/// 注册命令、事件，启动 Tauri 窗口。
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("vox_ui=info")),
+        )
+        .init();
+
+    tauri::Builder::default()
+        .manage(AppState::new())
+        .invoke_handler(tauri::generate_handler![
+            commands::get_state,
+            commands::list_audio_devices,
+            commands::get_metrics,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

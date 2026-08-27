@@ -6,6 +6,14 @@ rust-version.workspace = true
 license.workspace = true
 description = "VoxMorph Tauri GUI 后端：命令、事件、状态机"
 
+[lib]
+name = "vox_ui"
+path = "src/lib.rs"
+
+[[bin]]
+name = "voxmorph"
+path = "src/main.rs"
+
 [dependencies]
 vox-core.workspace = true
 vox-io.workspace = true
@@ -13,6 +21,12 @@ vox-convert.workspace = true
 vox-models.workspace = true
 anyhow.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
 serde.workspace = true
-# tauri 待 GUI 阶段引入（M1 后期）：
-# tauri.workspace = true
+tauri.workspace = true
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[features]
+default = ["tauri/custom-protocol"]

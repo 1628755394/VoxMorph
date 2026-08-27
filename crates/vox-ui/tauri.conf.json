@@ -1,0 +1,34 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
+  "productName": "VoxMorph",
+  "version": "0.1.0",
+  "identifier": "com.voxmorph.app",
+  "build": {
+    "beforeDevCommand": "cd frontend && npm run dev",
+    "beforeBuildCommand": "cd frontend && npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "frontend/dist"
+  },
+  "app": {
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 600,
+        "resizable": true,
+        "title": "VoxMorph",
+        "width": 800
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/icon.png"
+    ]
+  },
+  "plugins": {}
+}

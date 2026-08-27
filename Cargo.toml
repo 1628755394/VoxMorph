@@ -46,6 +46,7 @@ crossbeam-channel = "0.5"
 ringbuf = "0.4"
 # GUI
 tauri = "2.0"
+tauri-build = "2.0"
 # 测试
 proptest = "1.5"
 criterion = "0.5"
