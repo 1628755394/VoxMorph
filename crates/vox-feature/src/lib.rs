@@ -20,6 +20,10 @@
 //! 特征提取在专用 OS 线程运行，预算 <20ms/帧。通过 [`vox_infer::InferenceSession`]
 //! 调用 ONNX，不直接依赖 `ort`（解耦推理后端）。
 
+pub mod extractor;
+
+pub use extractor::FeatureExtractor;
+
 use thiserror::Error;
 use vox_core::VoxError;
 
