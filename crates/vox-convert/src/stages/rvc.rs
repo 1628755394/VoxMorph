@@ -20,7 +20,7 @@
 //! `pitch_shift` / `speaker_id` / `input_gain` / `output_gain` 可运行时调整
 //!（`set_live_params`），无需重新加载模型。
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use vox_core::{Frame, InferenceSession, VoxError};
 use vox_dsp::rvc::coarse_pitch;
@@ -96,7 +96,7 @@ pub struct RvcStage<E: InferenceSession, F: InferenceSession, R: InferenceSessio
     stream_state: RvcStreamState,
     smoother: SolaChunkJoiner,
     config: RvcStageConfig,
-    live_params: Mutex<RvcLiveParams>,
+    live_params: Arc<Mutex<RvcLiveParams>>,
     // 复用缓冲。
     feature_tensor: FeatureTensor,
     pitchf_buffer: Vec<f32>,
@@ -132,7 +132,7 @@ impl<E: InferenceSession, F: InferenceSession, R: InferenceSession> RvcStage<E, 
             stream_state: RvcStreamState::new(rvc_sample_rate),
             smoother: SolaChunkJoiner::new(&sola_config),
             config,
-            live_params: Mutex::new(RvcLiveParams::default()),
+            live_params: Arc::new(Mutex::new(RvcLiveParams::default())),
             feature_tensor: FeatureTensor::default(),
             pitchf_buffer: Vec::new(),
             pitch_buffer: Vec::new(),
@@ -144,6 +144,11 @@ impl<E: InferenceSession, F: InferenceSession, R: InferenceSession> RvcStage<E, 
     /// 设置实时参数（线程安全，可从 GUI 线程调用）。
     pub fn set_live_params(&self, params: RvcLiveParams) {
         *self.live_params.lock().expect("live params mutex poisoned") = params;
+    }
+
+    /// 获取共享参数句柄（可在 stage 移入管线线程后继续从外部修改参数）。
+    pub fn live_params_handle(&self) -> Arc<Mutex<RvcLiveParams>> {
+        Arc::clone(&self.live_params)
     }
 
     /// 获取输出采样率。

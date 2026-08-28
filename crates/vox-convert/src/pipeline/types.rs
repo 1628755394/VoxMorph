@@ -70,6 +70,8 @@ pub struct PipelineMetrics {
     pub dropped_frames: AtomicU64,
     /// 累计处理错误数（已降级为静音）。
     pub error_count: AtomicU64,
+    /// 上一帧推理耗时（微秒，0 表示尚未处理过帧）。
+    pub last_infer_us: AtomicU64,
 }
 
 impl PipelineMetrics {
@@ -107,6 +109,12 @@ impl PipelineMetrics {
         self.error_count.fetch_add(1, Ordering::Relaxed);
     }
 
+    /// 记录上一帧推理耗时（微秒）。
+    #[inline]
+    pub fn set_last_infer_us(&self, us: u64) {
+        self.last_infer_us.store(us, Ordering::Relaxed);
+    }
+
     /// 快照当前指标值。
     pub fn snapshot(&self) -> MetricsSnapshot {
         MetricsSnapshot {
@@ -114,6 +122,7 @@ impl PipelineMetrics {
             output_frames: self.output_frames.load(Ordering::Relaxed),
             dropped_frames: self.dropped_frames.load(Ordering::Relaxed),
             error_count: self.error_count.load(Ordering::Relaxed),
+            last_infer_us: self.last_infer_us.load(Ordering::Relaxed),
         }
     }
 }
@@ -126,6 +135,7 @@ pub struct MetricsSnapshot {
     pub output_frames: u64,
     pub dropped_frames: u64,
     pub error_count: u64,
+    pub last_infer_us: u64,
 }
 
 /// 管线阶段 trait：处理一帧，输出一帧。

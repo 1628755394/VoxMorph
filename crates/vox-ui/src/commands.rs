@@ -173,7 +173,7 @@ pub async fn start_rvc_engine(
         .await
         .map_err(|e| format!("model loading task failed: {e}"))?;
 
-    let pipeline = result.map_err(|e| {
+    let (pipeline, live_params) = result.map_err(|e| {
         state.set(UiState::Error);
         let _ = app.emit("state-changed", state.get());
         e
@@ -183,6 +183,7 @@ pub async fn start_rvc_engine(
     let _ = app.emit("state-changed", state.get());
 
     let config = vox_convert::RealtimeEngineConfig::default();
+    state.set_live_params_handle(live_params);
     state.start_engine(pipeline, config);
 
     if !state.is_engine_running() {
@@ -196,7 +197,11 @@ pub async fn start_rvc_engine(
 }
 
 /// 加载 RVC 模型并构建 Pipeline（在 spawn_blocking 中调用）。
-fn load_and_build_rvc_pipeline(paths: &RvcModelPaths) -> Result<vox_convert::Pipeline, String> {
+///
+/// 返回 `(Pipeline, LiveParamsHandle)`：参数句柄供 GUI 运行时调整 pitch/gain。
+fn load_and_build_rvc_pipeline(
+    paths: &RvcModelPaths,
+) -> Result<(vox_convert::Pipeline, vox_convert::LiveParamsHandle), String> {
     let embedder = vox_infer::OrtSession::load(&paths.embedder)
         .map_err(|e| format!("failed to load embedder: {e}"))?;
     let f0 = vox_infer::OrtSession::load(&paths.f0_model)
@@ -212,11 +217,12 @@ fn load_and_build_rvc_pipeline(paths: &RvcModelPaths) -> Result<vox_convert::Pip
         paths.rvc_sample_rate,
         vox_convert::RvcStageConfig::default(),
     );
+    let live_params = stage.live_params_handle();
 
     let mut pipeline = vox_convert::Pipeline::new(vox_convert::PipelineConfig::default_16k_mono());
     pipeline.add_stage("rvc", Box::new(stage));
 
-    Ok(pipeline)
+    Ok((pipeline, live_params))
 }
 
 // ── 实时引擎控制 ──────────────────────────────────────────────────────
@@ -231,8 +237,12 @@ pub async fn start_engine(app: AppHandle, state: State<'_, AppState>) -> Result<
     state.set(UiState::Running);
     let _ = app.emit("state-changed", state.get());
 
-    // Passthrough 模式：空管线（无 Stage）。
-    let pipeline = vox_convert::Pipeline::new(vox_convert::PipelineConfig::default_16k_mono());
+    // Passthrough 模式：单阶段直通管线（输入即输出）。
+    let mut pipeline = vox_convert::Pipeline::new(vox_convert::PipelineConfig::default_16k_mono());
+    pipeline.add_stage(
+        "passthrough",
+        Box::new(vox_convert::PassthroughStage::new()),
+    );
     let config = vox_convert::RealtimeEngineConfig::default();
 
     // 引擎在专用线程中启动（cpal 流创建 + 保活）。
@@ -256,10 +266,37 @@ pub async fn stop_engine(app: AppHandle, state: State<'_, AppState>) -> Result<(
     }
 
     state.stop_engine();
+    state.clear_live_params_handle();
 
     state.set(UiState::Ready);
     let _ = app.emit("state-changed", state.get());
 
+    Ok(())
+}
+
+/// 实时参数（前端传入，运行时调整 pitch/gain）。
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct LiveParams {
+    /// Pitch shift（半音）。
+    pub pitch_shift: f32,
+    /// Speaker ID。
+    pub speaker_id: i64,
+    /// 输入增益。
+    pub input_gain: f32,
+    /// 输出增益。
+    pub output_gain: f32,
+}
+
+/// 运行时调整变声参数（不需重新加载模型）。
+#[tauri::command]
+pub fn set_live_params(params: LiveParams, state: State<'_, AppState>) -> Result<(), String> {
+    let handle = state.live_params_handle().ok_or("engine not running")?;
+    *handle.lock().map_err(|e| e.to_string())? = vox_convert::RvcLiveParams {
+        pitch_shift: params.pitch_shift,
+        speaker_id: params.speaker_id,
+        input_gain: params.input_gain,
+        output_gain: params.output_gain,
+    };
     Ok(())
 }
 
@@ -274,10 +311,24 @@ pub fn is_engine_running(state: State<'_, AppState>) -> Result<bool, String> {
 /// 查询当前管线指标。
 #[tauri::command]
 pub fn get_metrics(state: State<'_, AppState>) -> Result<PipelineMetrics, String> {
+    let snapshot = state.pipeline_metrics_snapshot();
+    // buffer_level = 输入帧 - 输出帧（管线在途帧数，近似缓冲水位）。
+    // infer_ms = 上一帧推理耗时（微秒转毫秒）。
+    let (buffer_level, dropped_frames, infer_ms) = match snapshot {
+        Some(s) => {
+            let in_flight = s.input_frames.saturating_sub(s.output_frames);
+            (
+                in_flight as u32,
+                s.dropped_frames,
+                s.last_infer_us as f32 / 1000.0,
+            )
+        }
+        None => (0, 0, 0.0),
+    };
     Ok(PipelineMetrics {
-        buffer_level: 0,
-        infer_ms: 0.0,
-        dropped_frames: 0,
+        buffer_level,
+        infer_ms,
+        dropped_frames,
         state: state.get(),
     })
 }
@@ -285,10 +336,22 @@ pub fn get_metrics(state: State<'_, AppState>) -> Result<PipelineMetrics, String
 /// 推送指标快照到前端（供定时器调用）。
 #[tauri::command]
 pub fn emit_metrics(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    let snapshot = state.pipeline_metrics_snapshot();
+    let (buffer_level, dropped_frames, infer_ms) = match snapshot {
+        Some(s) => {
+            let in_flight = s.input_frames.saturating_sub(s.output_frames);
+            (
+                in_flight as u32,
+                s.dropped_frames,
+                s.last_infer_us as f32 / 1000.0,
+            )
+        }
+        None => (0, 0, 0.0),
+    };
     let metrics = PipelineMetrics {
-        buffer_level: 0,
-        infer_ms: 0.0,
-        dropped_frames: 0,
+        buffer_level,
+        infer_ms,
+        dropped_frames,
         state: state.get(),
     };
     app.emit("metrics-update", &metrics)

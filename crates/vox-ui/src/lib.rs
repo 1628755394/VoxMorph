@@ -83,6 +83,7 @@ pub fn run() {
             commands::start_engine,
             commands::start_rvc_engine,
             commands::stop_engine,
+            commands::set_live_params,
             commands::is_engine_running,
             commands::get_metrics,
             commands::emit_metrics,

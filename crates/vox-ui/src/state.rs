@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
+use vox_convert::{LiveParamsHandle, PipelineMetrics};
 use vox_models::TimbreLibrary;
 
 /// 音色摘要信息（id, name, f0_offset, tags），供命令层提取。
@@ -132,6 +133,10 @@ pub struct AppState {
     engine_control: Mutex<EngineControl>,
     /// 音色库目录路径（用户配置）。
     timbre_dir: Mutex<Option<PathBuf>>,
+    /// 当前引擎的管线指标（引擎运行时有值，停止后清空）。
+    pipeline_metrics: Mutex<Option<Arc<PipelineMetrics>>>,
+    /// RVC 实时参数共享句柄（RVC 引擎运行时有值）。
+    live_params: Mutex<Option<LiveParamsHandle>>,
 }
 
 impl AppState {
@@ -142,6 +147,8 @@ impl AppState {
             timbre_library: Mutex::new(None),
             engine_control: Mutex::new(EngineControl::new()),
             timbre_dir: Mutex::new(None),
+            pipeline_metrics: Mutex::new(None),
+            live_params: Mutex::new(None),
         }
     }
 
@@ -203,6 +210,13 @@ impl AppState {
         pipeline: vox_convert::Pipeline,
         config: vox_convert::RealtimeEngineConfig,
     ) {
+        // 在 pipeline 移入引擎线程前，克隆 metrics Arc 供 GUI 查询。
+        let metrics = pipeline.metrics();
+        *self
+            .pipeline_metrics
+            .lock()
+            .expect("pipeline metrics mutex poisoned") = Some(metrics);
+
         self.engine_control
             .lock()
             .expect("engine control mutex poisoned")
@@ -215,6 +229,38 @@ impl AppState {
             .lock()
             .expect("engine control mutex poisoned")
             .stop();
+
+        *self
+            .pipeline_metrics
+            .lock()
+            .expect("pipeline metrics mutex poisoned") = None;
+    }
+
+    /// 获取管线指标快照（引擎运行时才有）。
+    pub fn pipeline_metrics_snapshot(&self) -> Option<vox_convert::MetricsSnapshot> {
+        self.pipeline_metrics
+            .lock()
+            .expect("pipeline metrics mutex poisoned")
+            .as_ref()
+            .map(|m| m.snapshot())
+    }
+
+    /// 设置 RVC 实时参数句柄（启动 RVC 引擎时调用）。
+    pub fn set_live_params_handle(&self, handle: LiveParamsHandle) {
+        *self.live_params.lock().expect("live params mutex poisoned") = Some(handle);
+    }
+
+    /// 获取 RVC 实时参数句柄（供 `set_live_params` 命令使用）。
+    pub fn live_params_handle(&self) -> Option<LiveParamsHandle> {
+        self.live_params
+            .lock()
+            .expect("live params mutex poisoned")
+            .clone()
+    }
+
+    /// 清除 RVC 实时参数句柄（停止引擎时调用）。
+    pub fn clear_live_params_handle(&self) {
+        *self.live_params.lock().expect("live params mutex poisoned") = None;
     }
 
     /// 引擎是否正在运行。

@@ -43,12 +43,17 @@ pub use realtime::{
     FrameAdapter, FrameAdapterConfig, RealtimeEngine, RealtimeEngineConfig, RealtimeEngineHandle,
 };
 pub use stages::{
-    ConvertInputLayout, ConvertStage, FeatureStage, RvcLiveParams, RvcStage, RvcStageConfig,
-    RvcStageError, VocoderInputLayout, VocoderStage,
+    ConvertInputLayout, ConvertStage, FeatureStage, PassthroughStage, RvcLiveParams, RvcStage,
+    RvcStageConfig, RvcStageError, VocoderInputLayout, VocoderStage,
 };
+
+use std::sync::{Arc, Mutex};
 
 use thiserror::Error;
 use vox_core::VoxError;
+
+/// RVC 实时参数共享句柄（可在引擎运行时从外部修改参数）。
+pub type LiveParamsHandle = Arc<Mutex<RvcLiveParams>>;
 
 /// 变声编排错误。
 ///

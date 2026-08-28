@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.voxmorph.app",
   "build": {
-    "beforeDevCommand": "cd frontend && npm run dev",
-    "beforeBuildCommand": "cd frontend && npm run build",
-    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:9090",
     "frontendDist": "frontend/dist"
   },
   "app": {

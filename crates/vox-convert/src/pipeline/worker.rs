@@ -15,6 +15,7 @@
 
 use std::sync::Arc;
 use std::thread;
+use std::time::Instant;
 
 use crossbeam_channel::{bounded, Receiver, Sender};
 use tracing::{error, warn};
@@ -117,9 +118,13 @@ fn run_stage_loop(
         output_frame.timestamp = input_frame.timestamp;
 
         // 处理帧，错误降级为静音。
+        let started = Instant::now();
         match stage.process(&input_frame, &mut output_frame) {
-            Ok(()) => {}
+            Ok(()) => {
+                metrics.set_last_infer_us(started.elapsed().as_micros() as u64);
+            }
             Err(e) => {
+                metrics.set_last_infer_us(started.elapsed().as_micros() as u64);
                 metrics.inc_error();
                 error!(stage = name, error = %e, "stage processing failed, outputting silence");
                 // output_frame 已是 zero（静音），继续发送。
