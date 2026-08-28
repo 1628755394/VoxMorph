@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <radialGradient id="g1" cx="20%" cy="25%" r="55%">
+      <stop offset="0%" stop-color="hsl(213, 78%, 40%)" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="hsl(213, 78%, 40%)" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="80%" cy="20%" r="50%">
+      <stop offset="0%" stop-color="hsl(280, 60%, 45%)" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="hsl(280, 60%, 45%)" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g3" cx="70%" cy="85%" r="60%">
+      <stop offset="0%" stop-color="hsl(190, 70%, 40%)" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="hsl(190, 70%, 40%)" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g4" cx="10%" cy="90%" r="45%">
+      <stop offset="0%" stop-color="hsl(340, 70%, 50%)" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="hsl(340, 70%, 50%)" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.04 0"/>
+    </filter>
+  </defs>
+  <rect width="1920" height="1080" fill="hsl(230, 30%, 6%)"/>
+  <rect width="1920" height="1080" fill="url(#g1)"/>
+  <rect width="1920" height="1080" fill="url(#g2)"/>
+  <rect width="1920" height="1080" fill="url(#g3)"/>
+  <rect width="1920" height="1080" fill="url(#g4)"/>
+  <rect width="1920" height="1080" filter="url(#noise)"/>
+</svg>

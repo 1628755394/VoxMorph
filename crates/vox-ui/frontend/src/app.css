@@ -1,144 +1,90 @@
-:root {
-  --bg: #1a1a2e;
-  --bg-card: #16213e;
-  --bg-card-hover: #1a2745;
-  --text: #e0e0e0;
-  --text-muted: #8a8a9a;
-  --accent: #0f3460;
-  --accent-bright: #1a5fb4;
-  --success: #2ecc71;
-  --error: #e74c3c;
-  --warning: #f39c12;
-  --border: #2a2a4a;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* shadcn-svelte 主题 token（HSL 通道值，配合 hsl(var(--xxx) / <alpha>) 使用）。
+ * 默认即深色：VoxMorph 是音频工具，桌面应用默认深色更合适。
+ * 浅色 token 保留以便后续支持主题切换。 */
+@layer base {
+  :root {
+    --background: 230 30% 8%;          /* #1a1a2e 原主背景 */
+    --foreground: 220 13% 87%;         /* #e0e0e0 */
+    --card: 224 41% 16%;               /* #16213e 原卡片 */
+    --card-foreground: 220 13% 87%;
+    --popover: 224 41% 16%;
+    --popover-foreground: 220 13% 87%;
+    --primary: 213 78% 40%;            /* #1a5fb4 原强调亮蓝 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 224 30% 20%;
+    --secondary-foreground: 220 13% 87%;
+    --muted: 224 30% 20%;
+    --muted-foreground: 233 9% 60%;    /* #8a8a9a 原次要文字 */
+    --accent: 213 78% 40%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 56%;          /* #e74c3c 原错误色 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 233 27% 23%;             /* #2a2a4a 原边框 */
+    --input: 233 27% 23%;
+    --ring: 213 78% 40%;
+    --radius: 0.5rem;
+  }
+
+  /* 浅色主题（保留，未来切换用） */
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 224 41% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 41% 14%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 41% 14%;
+    --primary: 213 78% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 224 41% 14%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 224 41% 14%;
+    --destructive: 0 72% 56%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 213 78% 40%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
-
+/* 旧版裸 CSS 中与组件强相关的样式已迁移到 Tailwind utility / shadcn 组件。
+ * 以下保留少量与 App.svelte 现有 class 名兼容的过渡样式，便于逐步迁移。 */
 #app {
   max-width: 800px;
   margin: 0 auto;
   padding: 1.5rem;
 }
 
-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--accent);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: background 0.15s;
-}
-
-button:hover:not(:disabled) {
-  background: var(--accent-bright);
-}
-
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.card h2 {
-  font-size: 1rem;
-  color: var(--text-muted);
-  margin-bottom: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .state-badge {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+  border-radius: 9999px;
   font-size: 0.85rem;
   font-weight: 600;
 }
 
-.state-badge.idle { background: #2a2a4a; }
-.state-badge.loading-model { background: var(--warning); color: #1a1a2e; }
-.state-badge.ready { background: var(--success); color: #1a1a2e; }
-.state-badge.running { background: var(--accent-bright); }
-.state-badge.error { background: var(--error); }
-
-.device-list {
-  list-style: none;
-}
-
-.device-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.device-item:last-child {
-  border-bottom: none;
-}
-
-.device-name {
-  font-size: 0.9rem;
-}
-
-.device-meta {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.device-default {
-  color: var(--success);
-  font-size: 0.75rem;
-  margin-left: 0.5rem;
-}
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-}
-
-.metric {
-  text-align: center;
-}
-
-.metric-value {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--accent-bright);
-}
-
-.metric-label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-}
+.state-badge.idle { @apply bg-muted text-muted-foreground; }
+.state-badge.loading-model { @apply bg-yellow-500 text-zinc-900; }
+.state-badge.ready { @apply bg-green-500 text-zinc-900; }
+.state-badge.running { @apply bg-primary text-primary-foreground; }
+.state-badge.error { @apply bg-destructive text-destructive-foreground; }
 
 .error-msg {
-  color: var(--error);
-  font-size: 0.85rem;
-  padding: 0.5rem;
-  background: rgba(231, 76, 60, 0.1);
-  border-radius: 4px;
-  margin-top: 0.5rem;
+  @apply rounded-md bg-destructive/10 p-2 text-sm text-destructive;
 }
